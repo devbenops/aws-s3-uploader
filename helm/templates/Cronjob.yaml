@@ -1,0 +1,58 @@
+{{- if .Values.cronjob -}}
+{{- $Name := include "appName" . -}}
+apiVersion: {{ template "app.apiVersion" . }}
+kind: {{ template "app.kind" . }}
+metadata:
+  labels:
+    component: {{ .Values.cronjob.labels.component }}
+    environment: {{ .Values.cronjob.labels.environment }}
+  name: {{ $Name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  schedule: {{ .Values.schedule }}
+  concurrencyPolicy: {{ .Values.concurrencyPolicy }}
+  jobTemplate:
+    metadata:
+      name: {{ $Name }}
+    spec:
+      template:
+        spec:
+          {{- if .Values.serviceAccountName }}
+          serviceAccountName: {{ .Values.serviceAccountName }}
+           {{- end }}
+          initContainers:
+          - name: {{ $Name }}-init
+            image: {{ .Values.image.init.repository }}
+            imagePullPolicy: {{ .Values.image.init.pullPolicy }}
+            command:
+                - sh
+                - -c 
+                - touch /files/$(date +%m-%d-%Y)-$(date +"%T").txt 
+            volumeMounts:
+              - name: {{ .Values.volumeMounts.name }}
+                mountPath: {{ .Values.volumeMounts.mountPath }}
+          containers:
+            - name: {{ $Name }}
+              image: "{{ .Values.image.app.repository }}:{{ .Values.image.app.Imagetag }}"
+              imagePullPolicy: {{ .Values.image.app.pullPolicy }}
+            {{- if .Values.resources }}
+              resources:
+                  {{- .Values.resources | toYaml | nindent 16 }}
+            {{- end }}
+            {{- if .Values.configMap.app }}
+              envFrom:
+              - configMapRef:
+                  name: {{ .Values.configMap.app }}
+            {{- end }}
+              volumeMounts:
+              - name: {{ .Values.volumeMounts.name }}
+                mountPath: {{ .Values.volumeMounts.mountPath }}
+          volumes:
+          - name: shared-files
+            emptyDir: {}
+        {{- if .Values.imagePullSecrets }}
+          imagePullSecrets:
+          {{- .Values.imagePullSecrets | toYaml | nindent 10 }}
+        {{- end }}
+          restartPolicy: {{ .Values.restartPolicy }}
+{{- end }}

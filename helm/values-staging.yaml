@@ -1,0 +1,50 @@
+############## Global values #################
+cronjob:
+  labels:
+    component: s3-uploader
+    environment: staging
+
+serviceAccountName: aws-s3-uploader
+
+namespace: staging
+
+############## Cronjob values ####################
+image:
+ app:
+    repository: nithinbenny/s3-uploader
+    Imagetag: v1
+    pullPolicy: Always
+ init:
+   repository: busybox
+   pullPolicy: IfNotPresent
+
+schedule: "*/2 * * * *"
+
+imagePullSecrets:
+- name:  dockerhub
+
+concurrencyPolicy: Forbid
+configMap:
+  app: ing-reporting-envs
+
+resources:
+  limits:
+    memory: 100Mi
+  requests:
+    memory: 50Mi
+
+imagePullSecrets:
+- name:  regcred
+
+restartPolicy: OnFailure
+revisionHistoryLimit: 10
+
+### volume mounts ####
+volumeMounts:
+    name: shared-files
+    mountPath: "/files/"
+  
+###### ENV variables #######
+env:
+  AWS_S3_BUCKET: "staging-nithin-paul-platform-challenge"
+  S3_FOLDER: "data_store"
